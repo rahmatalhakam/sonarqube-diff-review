@@ -1,0 +1,32 @@
+# SonarQube report outputs
+sonar-issues.json
+sonarqube-issues.json
+*.sonar-issues.json
+
+# Local secrets and environment files
+.env
+.env.*
+*.local
+
+# Temporary download files
+*.tmp
+*.temp
+
+# Python cache and tooling output
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local process logs
+*.log
+
+# Grill/session notes
+.grill/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
