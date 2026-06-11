@@ -1,0 +1,35 @@
+{
+  "name": "sonarqube-diff-review",
+  "version": "1.0.0",
+  "description": "Review SonarQube issues only when they overlap the current Git diff.",
+  "author": {
+    "name": "rahmatalhakam",
+    "url": "https://github.com/rahmatalhakam"
+  },
+  "homepage": "https://github.com/rahmatalhakam/sonarqube-diff-review",
+  "repository": "https://github.com/rahmatalhakam/sonarqube-diff-review",
+  "license": "MIT",
+  "keywords": [
+    "sonarqube",
+    "diff-review",
+    "code-quality",
+    "agent-skill"
+  ],
+  "interface": {
+    "displayName": "SonarQube Diff Review",
+    "shortDescription": "Review SonarQube findings in changed lines",
+    "longDescription": "Download, inspect, and triage SonarQube issues against a Git diff. Report or fix only findings whose primary location overlaps changed files and changed lines.",
+    "developerName": "rahmatalhakam",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Shell"
+    ],
+    "websiteURL": "https://github.com/rahmatalhakam/sonarqube-diff-review",
+    "defaultPrompt": [
+      "Review SonarQube issues in my current diff.",
+      "Download SonarQube issues and match them to changed lines.",
+      "Inspect sonar-issues.json and report only diff findings."
+    ]
+  }
+}

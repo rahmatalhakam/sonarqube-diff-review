@@ -1,6 +1,6 @@
 ---
 name: sonarqube-diff-review
-description: Download, inspect, and triage SonarQube issue reports against Git diffs. Use when Codex needs to fetch or process SonarQube issues, map sonar-issues.json or sonarqube-issues.json findings to changed files and changed lines, review PR or branch quality-gate issues, or produce remediation guidance without exposing SonarQube tokens.
+description: Download, inspect, and triage SonarQube issue reports against Git diffs. Use when the agent needs to fetch SonarQube issues, compare them with changed files and changed lines, and report or fix only issues inside the current Git diff.
 ---
 
 # SonarQube Diff Review

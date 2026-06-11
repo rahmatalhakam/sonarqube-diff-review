@@ -1,0 +1,13 @@
+{
+  "name": "sonarqube-diff-review-marketplace",
+  "owner": {
+    "name": "rahmatalhakam"
+  },
+  "plugins": [
+    {
+      "name": "sonarqube-diff-review",
+      "source": ".",
+      "description": "Review SonarQube issues only when they overlap the current Git diff."
+    }
+  ]
+}

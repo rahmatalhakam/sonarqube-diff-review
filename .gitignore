@@ -12,6 +12,9 @@ sonarqube-issues.json
 *.tmp
 *.temp
 
+# Generated release artifacts
+dist/
+
 # Python cache and tooling output
 __pycache__/
 *.py[cod]
