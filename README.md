@@ -28,6 +28,8 @@ sonarqube-diff-review/
 
 The root `SKILL.md` intentionally uses only the common `name` and `description` frontmatter fields so the same repository can be installed by multiple AI tools.
 
+The `skills` CLI discovers a root-level `SKILL.md`, so this repository can be installed directly with `npx skills add` without moving files into a nested `skills/` directory.
+
 The Codex plugin wrapper relies on default root skill discovery instead of setting a custom `skills` path. The local Codex plugin validator rejects `skills: "./"`; omitting the field preserves the root skill layout and validates cleanly.
 
 Format references:
@@ -53,6 +55,7 @@ Format references:
 ## System Requirements
 
 - Python 3.8 or newer.
+- Node.js 18 or newer when installing with `npx skills`.
 - Git, available on `PATH`.
 - curl, available as `curl.exe` on Windows or `curl` on Linux/macOS.
 - PowerShell 5+ for Windows usage, or Bash for Linux/macOS/Git Bash usage.
@@ -60,9 +63,43 @@ Format references:
 
 ## Install
 
+### Recommended: npx skills
+
+Install from GitHub with the Agent Skills CLI:
+
+```bash
+npx skills add rahmatalhakam/sonarqube-diff-review
+```
+
+Install globally so supported agents can use it across projects:
+
+```bash
+npx skills add rahmatalhakam/sonarqube-diff-review --global
+```
+
+Install only for Codex:
+
+```bash
+npx skills add rahmatalhakam/sonarqube-diff-review --agent codex --global
+```
+
+List the skills discovered in this repository before installing:
+
+```bash
+npx skills add rahmatalhakam/sonarqube-diff-review --list
+```
+
+For non-interactive setup:
+
+```bash
+npx skills add rahmatalhakam/sonarqube-diff-review --agent codex --global --yes
+```
+
+Restart your agent after installing so the new skill is discovered.
+
 ### Manual Agent Skills Install
 
-Use this path when you want the same checkout to work across Agent Skills-compatible tools:
+Use this fallback when you cannot use Node.js or `npx`:
 
 ```bash
 mkdir -p ~/.agents/skills
@@ -85,7 +122,9 @@ For a project-scoped install, clone or copy this repository to:
 
 ### Codex
 
-Codex can use the manual `.agents/skills` install above.
+Codex can use the recommended `npx skills` install above. Pass `--agent codex` when you want to target only Codex.
+
+Manual clone into a Codex skills directory also works.
 
 For plugin-style distribution, this repository includes `.codex-plugin/plugin.json`. After publishing the repository, users can add it as a plugin marketplace source:
 
@@ -166,6 +205,16 @@ For marketplace-style distribution, this repository includes `.claude-plugin/mar
 ```
 
 ## Update Existing Install
+
+If installed with `npx skills`:
+
+```bash
+npx skills update sonarqube-diff-review --global
+```
+
+For project-scoped installs, omit `--global`.
+
+If installed by manual git clone:
 
 Bash:
 
