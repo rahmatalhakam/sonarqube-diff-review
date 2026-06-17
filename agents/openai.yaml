@@ -1,4 +1,4 @@
 interface:
   display_name: "SonarQube Diff Review"
   short_description: "Map SonarQube issues to changed lines"
-  default_prompt: "Use $sonarqube-diff-review to download SonarQube issues and report only findings that overlap my Git diff."
+  default_prompt: "Use $sonarqube-diff-review to download SonarQube issues and report only findings that overlap my committed Git diff."

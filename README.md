@@ -17,6 +17,7 @@ sonarqube-diff-review/
 |-- SKILL.md
 |-- AGENTS.md
 |-- GEMINI.md
+|-- .gitignore
 |-- .codex-plugin/
 |   `-- plugin.json
 |-- .claude-plugin/
@@ -43,6 +44,7 @@ Format references:
 - `SKILL.md`: Skill trigger metadata and main workflow.
 - `AGENTS.md`: Root instructions for Codex and other Agent Skills-compatible coding agents.
 - `GEMINI.md`: Root context file for Gemini CLI.
+- `.gitignore`: Local ignore rules for generated review artifacts and secrets.
 - `.codex-plugin/plugin.json`: Codex plugin wrapper for marketplace-style distribution.
 - `.claude-plugin/marketplace.json`: Claude Code marketplace metadata.
 - `agents/openai.yaml`: UI metadata for Codex skill lists.
@@ -57,8 +59,9 @@ Format references:
 - Python 3.8 or newer.
 - Node.js 18 or newer when installing with `npx skills`.
 - Git, available on `PATH`.
-- curl, available as `curl.exe` on Windows or `curl` on Linux/macOS.
-- PowerShell 5+ for Windows usage, or Bash for Linux/macOS/Git Bash usage.
+- PowerShell 5+ or `pwsh` so helpers can read the persistent `SONAR_TOKEN` with `[System.Environment]`.
+- curl for Bash usage. The PowerShell helper uses built-in web requests.
+- Bash for Linux/macOS/Git Bash usage.
 - Network access to the SonarQube server when downloading reports.
 
 ## Install
@@ -260,40 +263,45 @@ description: Download, inspect, and triage SonarQube issue reports against Git d
 
 ## Usage
 
-Set the SonarQube API URL and token in environment variables, then run the helper for your shell.
+Store the SonarQube token before the review in persistent User or Machine environment storage as `SONAR_TOKEN` with `[System.Environment]::SetEnvironmentVariable`. Do this outside Codex chat, shell history, shell transcripts, and shared logs. The helpers intentionally reject token command arguments, prompts, `$env:SONAR_TOKEN`, and process `SONAR_TOKEN`.
+
+Pass the SonarQube issues API URL as an explicit helper input. The helpers intentionally ignore `$env:SONAR_URL` and process `SONAR_URL`.
 
 PowerShell:
 
 ```powershell
-$env:SONAR_TOKEN="squ_xxxxxxxxxxxxxxxxx"
-$env:SONAR_URL="https://sonarqube.example.com/api/issues/search?componentKeys=my-project&inNewCodePeriod=true&issueStatuses=CONFIRMED,OPEN&ps=500&p=1&additionalFields=_all"
-.\scripts\download-sonar-issues.ps1
+.\scripts\download-sonar-issues.ps1 -SonarUrl "https://sonarqube.example.com/api/issues/search?componentKeys=my-project&inNewCodePeriod=true&issueStatuses=CONFIRMED,OPEN&ps=500&p=1&additionalFields=_all"
 ```
 
 Bash:
 
 ```bash
-export SONAR_TOKEN="squ_xxxxxxxxxxxxxxxxx"
-export SONAR_URL="https://sonarqube.example.com/api/issues/search?componentKeys=my-project&inNewCodePeriod=true&issueStatuses=CONFIRMED,OPEN&ps=500&p=1&additionalFields=_all"
-./scripts/download-sonar-issues.sh
+./scripts/download-sonar-issues.sh --url "https://sonarqube.example.com/api/issues/search?componentKeys=my-project&inNewCodePeriod=true&issueStatuses=CONFIRMED,OPEN&ps=500&p=1&additionalFields=_all"
 ```
+
+Reports are saved under `.sonarqube-diff-review/<session-id>/sonarqube-issues.json`. The session id is generated automatically and printed by the helper. Use `-SessionId` or `--session-id` when a stable artifact folder name is needed.
 
 Inspect an existing report:
 
 ```bash
-python scripts/inspect-sonar-report.py sonar-issues.json
+python scripts/inspect-sonar-report.py .sonarqube-diff-review/<session-id>/sonarqube-issues.json
 ```
 
-Then compare the report to a target branch diff:
+Then compare the report to the committed target branch diff:
 
 ```bash
 git diff --name-only --find-renames <base>...HEAD
 git diff --unified=0 --find-renames <base>...HEAD
 ```
 
+Do not use unstaged, uncommitted, or stashed patches for review/fix scope.
+
 ## Safety Notes
 
-- Prefer `SONAR_TOKEN` and `SONAR_URL` environment variables over inline tokens.
+- Read tokens only from persistent User or Machine `SONAR_TOKEN` set with `[System.Environment]::SetEnvironmentVariable`.
+- Do not pass tokens through chat, prompts, command arguments, `$env:SONAR_TOKEN`, process `SONAR_TOKEN`, logs, or commits.
+- Pass the SonarQube issue API URL with `-SonarUrl` or `--url`; do not use `$env:SONAR_URL` or process `SONAR_URL`.
+- Keep generated reports and temp files inside `.sonarqube-diff-review/<session-id>/`.
 - Do not commit downloaded SonarQube reports, temporary files, logs, or environment files.
 - Fetch all SonarQube pages before claiming a branch has no relevant findings.
 - Treat secondary flow locations as supporting context unless explicitly doing deeper flow analysis.
@@ -309,5 +317,5 @@ python <path-to-skill-creator>/scripts/quick_validate.py .
 Validate a real report:
 
 ```bash
-python scripts/inspect-sonar-report.py sonar-issues.json
+python scripts/inspect-sonar-report.py .sonarqube-diff-review/<session-id>/sonarqube-issues.json
 ```

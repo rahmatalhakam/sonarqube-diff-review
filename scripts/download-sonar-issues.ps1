@@ -2,35 +2,76 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $false)]
-    [string]$SonarUrl = $env:SONAR_URL,
-
-    [Parameter(Mandatory = $false)]
-    [string]$SonarToken = $env:SONAR_TOKEN,
+    [string]$SonarUrl,
 
     [Parameter(Mandatory = $false)]
     [string]$OutputFile = "sonarqube-issues.json",
 
     [Parameter(Mandatory = $false)]
     [ValidateSet("basic", "bearer")]
-    [string]$AuthMode = "basic"
+    [string]$AuthMode = "bearer",
+
+    [Parameter(Mandatory = $false)]
+    [string]$SessionId
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $TempPath = $null
-$CurlConfigPath = $null
 
-function Assert-OutputFileName {
-    param([string]$FileName)
+function Get-PersistentSonarToken {
+    foreach ($Target in @([System.EnvironmentVariableTarget]::User, [System.EnvironmentVariableTarget]::Machine)) {
+        $Value = [System.Environment]::GetEnvironmentVariable("SONAR_TOKEN", $Target)
+        if (-not [string]::IsNullOrWhiteSpace($Value)) {
+            return $Value
+        }
+    }
 
-    if ([string]::IsNullOrWhiteSpace($FileName)) {
-        throw "Output filename must not be empty."
+    return $null
+}
+
+function New-DefaultSessionId {
+    $Timestamp = (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ")
+    $ProcessId = [System.Diagnostics.Process]::GetCurrentProcess().Id
+    return "$Timestamp-$ProcessId"
+}
+
+function Assert-SimpleName {
+    param(
+        [string]$Value,
+        [string]$Label
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        throw "$Label must not be empty."
     }
 
     $InvalidChars = [System.IO.Path]::GetInvalidFileNameChars()
-    if ($FileName.IndexOfAny($InvalidChars) -ge 0 -or $FileName.Contains("..") -or $FileName.Contains("/") -or $FileName.Contains("\")) {
-        throw "Output filename must be a simple file name inside the Git project root."
+    if ($Value.IndexOfAny($InvalidChars) -ge 0 -or $Value.Contains("..") -or $Value.Contains("/") -or $Value.Contains("\")) {
+        throw "$Label must be a simple name without path separators."
+    }
+}
+
+function Assert-SonarUrl {
+    param([string]$Url)
+
+    try {
+        $Uri = [System.Uri]$Url
+    } catch {
+        throw "SonarQube URL must be an absolute HTTP or HTTPS URL."
+    }
+
+    if (-not $Uri.IsAbsoluteUri -or @("http", "https") -notcontains $Uri.Scheme) {
+        throw "SonarQube URL must be an absolute HTTP or HTTPS URL."
+    }
+
+    if (-not [string]::IsNullOrEmpty($Uri.UserInfo)) {
+        throw "SonarQube URL must not contain embedded credentials."
+    }
+
+    if ($Uri.Query -match "(?i)(^|[?&])(token|access_token|authorization|auth|password|passwd|secret)=") {
+        throw "SonarQube URL appears to contain a secret. Remove secrets from the URL before running this helper."
     }
 }
 
@@ -46,36 +87,43 @@ try {
     Set-Location -LiteralPath $ProjectRoot
 
     if ([string]::IsNullOrWhiteSpace($SonarUrl)) {
-        throw "Missing SonarQube URL. Provide -SonarUrl or set SONAR_URL."
+        throw 'Missing SonarQube URL. Provide -SonarUrl with the SonarQube issues API URL. SONAR_URL and $env:SONAR_URL are intentionally ignored.'
     }
 
+    Assert-SonarUrl -Url $SonarUrl
+
+    $SonarToken = Get-PersistentSonarToken
     if ([string]::IsNullOrWhiteSpace($SonarToken)) {
-        throw "Missing SonarQube token. Provide -SonarToken or set SONAR_TOKEN."
+        throw 'Missing persistent SONAR_TOKEN. Set SONAR_TOKEN in the User or Machine environment with [System.Environment]::SetEnvironmentVariable before running this helper. Do not use $env:SONAR_TOKEN, command arguments, prompts, or chat.'
     }
 
-    if (-not (Get-Command curl.exe -ErrorAction SilentlyContinue)) {
-        throw "curl.exe is required to download SonarQube issues."
+    Assert-SimpleName -Value $OutputFile -Label "Output filename"
+
+    if ([string]::IsNullOrWhiteSpace($SessionId)) {
+        $SessionId = New-DefaultSessionId
     }
 
-    Assert-OutputFileName -FileName $OutputFile
+    Assert-SimpleName -Value $SessionId -Label "Session id"
 
-    $OutputPath = Join-Path -Path $ProjectRoot -ChildPath $OutputFile
-    $TempPath = "$OutputPath.tmp"
-    $CurlConfigPath = [System.IO.Path]::GetTempFileName()
+    $ArtifactRoot = Join-Path -Path $ProjectRoot -ChildPath ".sonarqube-diff-review"
+    $SessionDir = Join-Path -Path $ArtifactRoot -ChildPath $SessionId
+    New-Item -ItemType Directory -Force -Path $SessionDir | Out-Null
+
+    $OutputPath = Join-Path -Path $SessionDir -ChildPath $OutputFile
+    $TempPath = Join-Path -Path $SessionDir -ChildPath "$OutputFile.tmp"
 
     if ($AuthMode -eq "bearer") {
-        Set-Content -LiteralPath $CurlConfigPath -Value "header = `"Authorization: Bearer $SonarToken`"" -Encoding ASCII -NoNewline
+        $Headers = @{ Authorization = "Bearer $SonarToken" }
     } else {
-        Set-Content -LiteralPath $CurlConfigPath -Value "user = `"$SonarToken`:`"" -Encoding ASCII -NoNewline
+        $BasicToken = [Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes(("{0}:" -f $SonarToken)))
+        $Headers = @{ Authorization = "Basic $BasicToken" }
     }
 
     Write-Host "Downloading SonarQube issues..."
+    Write-Host "Artifact session: $SessionId"
     Write-Host "Output file: $OutputPath"
 
-    & curl.exe --fail --silent --show-error --location --config $CurlConfigPath --output $TempPath $SonarUrl
-    if ($LASTEXITCODE -ne 0) {
-        throw "Download failed. curl exited with code $LASTEXITCODE."
-    }
+    Invoke-WebRequest -Uri $SonarUrl -Headers $Headers -OutFile $TempPath -UseBasicParsing
 
     if (-not (Test-Path -LiteralPath $TempPath)) {
         throw "Download failed. No output file was created."
@@ -102,8 +150,4 @@ try {
 
     Write-Error $_.Exception.Message
     exit 1
-} finally {
-    if ($CurlConfigPath -and (Test-Path -LiteralPath $CurlConfigPath)) {
-        Remove-Item -LiteralPath $CurlConfigPath -Force -ErrorAction SilentlyContinue
-    }
 }

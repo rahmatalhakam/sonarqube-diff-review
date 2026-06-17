@@ -15,6 +15,7 @@ INCLUDE_PATHS = (
     ".claude-plugin",
     ".codex-plugin",
     ".gitattributes",
+    ".gitignore",
     "AGENTS.md",
     "GEMINI.md",
     "SKILL.md",

@@ -1,12 +1,14 @@
 # SonarQube Diff Triage Reference
 
-Read this file when mapping a SonarQube issue report such as `sonar-issues.json` or `sonarqube-issues.json` to a Git diff or preparing the final review output.
+Read this file when mapping a SonarQube issue report from `.sonarqube-diff-review/<session-id>/` to a Git diff or preparing the final review output.
 
 ## Expected Inputs
 
-- SonarQube report JSON: A JSON object from `/api/issues/search` with an `issues` array. Common local filenames are `sonar-issues.json` and `sonarqube-issues.json`.
+- SonarQube report JSON: A JSON object from `/api/issues/search` with an `issues` array. Generated reports must live under `.sonarqube-diff-review/<session-id>/`.
 - Changed files: `git diff --name-only --find-renames <base>...HEAD`.
 - Changed lines: `git diff --unified=0 --find-renames <base>...HEAD`.
+
+Use only committed code in `<base>...HEAD` for review and fixes. Do not inspect or apply stashed patches, and do not use an unstaged worktree diff as review scope.
 
 If `paging.total` or top-level `total` is greater than the downloaded page coverage, treat the report as incomplete and say which page range was reviewed. Increase `ps` or download additional pages before claiming the branch is clean.
 

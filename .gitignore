@@ -1,4 +1,5 @@
 # SonarQube report outputs
+.sonarqube-diff-review/
 sonar-issues.json
 sonarqube-issues.json
 *.sonar-issues.json
